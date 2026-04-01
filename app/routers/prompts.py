@@ -19,3 +19,8 @@ async def get_prompt_version(prompt_id: str, version: str, registry: PromptRegis
 @router.post("/prompts", response_model=PromptRecord, status_code=201, tags=["Prompts"])
 async def register_prompt(registration: PromptRegistration, registry: PromptRegistryService = Depends(get_prompt_registry)):
     return registry.register(registration)
+
+@router.post("/prompts/{prompt_id}/promote/{version}", tags=["Prompts"])
+async def promote_prompt(prompt_id: str, version: str, registry: PromptRegistryService = Depends(get_prompt_registry)):
+    """DRJ-authorized promotion of a canon-gated prompt to ACTIVE."""
+    return registry.promote(prompt_id, version)

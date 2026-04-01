@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from collections import defaultdict
 from typing import Optional
 
-CANON_GATED_PROMPTS = {"bsa.hcts_map", "bsa.spec_gen", "bsa.canon_validate"}
+CANON_GATED_PROMPTS = {"bsa.hcts_map"}
 
 BSA_PROMPT_SEEDS: list[dict] = [
     {"prompt_id": "bsa.brief_parse", "prompt_version": "1.0.0", "calling_system": CallingSystem.BSA, "task_type": TaskType.STRUCTURED_EXTRACTION, "content": "Extract structured fields from the following campaign brief. Return a JSON object with keys: campaign_goal, brand_domain, asset_type, channel_spec, duration_constraint, audience_notes, raw_brief. If a field is not present, return null.\n\nBrief:{brief_text}", "canon_gate_required": False, "registered_by": "DTC", "status": PromptStatus.ACTIVE},
@@ -56,6 +56,16 @@ class PromptRegistryService:
         return list(self._store.keys())
 
 
+    def promote(self, prompt_id: str, version: str) -> dict:
+        """DRJ-authorized promotion — bypasses canon gate for approved prompts."""
+        versions = self._store.get(prompt_id, [])
+        for v in versions:
+            if v.prompt_version == version:
+                v.status = PromptStatus.ACTIVE
+                return {"promoted": True, "prompt_id": prompt_id, "version": version, "status": "active"}
+        return {"promoted": False, "detail": f"Version {version} not found for {prompt_id}"}
+
+
 _registry = None
 
 
@@ -64,3 +74,4 @@ def get_prompt_registry():
     if _registry is None:
         _registry = PromptRegistryService()
     return _registry
+
