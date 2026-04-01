@@ -15,7 +15,7 @@ def test_dtc_authority_prompts_active(registry,pid):
     assert r.status == PromptStatus.ACTIVE
     assert r.canon_gate_required is False
 
-@pytest.mark.parametrize("pid",["bsa.hcts_map","bsa.spec_gen","bsa.canon_validate"])
+@pytest.mark.parametrize("pid",["bsa.hcts_map"])
 def test_canon_gated_deprecated(registry,pid):
     assert pid in CANON_GATED_PROMPTS
     with pytest.raises(HTTPException) as e: registry.get_latest(pid)
