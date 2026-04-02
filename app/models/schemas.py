@@ -10,6 +10,7 @@ def _utcnow():
 class CallingSystem(str, Enum):
     BSA = "BSA"
     BASE = "BASE"
+    CIF = "CIF"
     CIDE = "CIDE"
     SCOUT = "SCOUT"
     EDGE = "EDGE"
