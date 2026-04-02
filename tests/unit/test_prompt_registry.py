@@ -15,11 +15,11 @@ def test_dtc_authority_prompts_active(registry,pid):
     assert r.status == PromptStatus.ACTIVE
     assert r.canon_gate_required is False
 
-@pytest.mark.parametrize("pid",["bsa.hcts_map"])
-def test_canon_gated_deprecated(registry,pid):
-    assert pid in CANON_GATED_PROMPTS
-    with pytest.raises(HTTPException) as e: registry.get_latest(pid)
-    assert e.value.status_code == 404
+def test_bsa_hcts_map_auto_promoted_on_startup(registry):
+    """bsa.hcts_map must be ACTIVE on startup — DRJ canon approval 2026-03-29"""
+    result = registry.get_latest("bsa.hcts_map")
+    assert result.status == PromptStatus.ACTIVE
+    assert result.prompt_id == "bsa.hcts_map"
 
 def test_register_new_version(registry):
     reg = PromptRegistration(prompt_id="bsa.brief_parse",prompt_version="1.1.0",calling_system=CallingSystem.BSA,task_type=TaskType.STRUCTURED_EXTRACTION,content="Updated",canon_gate_required=False,registered_by="DTC")
@@ -30,6 +30,21 @@ def test_duplicate_version_raises_409(registry):
     reg = PromptRegistration(prompt_id="bsa.brief_parse",prompt_version="1.0.0",calling_system=CallingSystem.BSA,task_type=TaskType.STRUCTURED_EXTRACTION,content="Dup",canon_gate_required=False,registered_by="DTC")
     with pytest.raises(HTTPException) as e: registry.register(reg)
     assert e.value.status_code == 409
+
+def test_canon_gated_forces_deprecated_on_new_registration(registry):
+    """Canon gate still forces deprecated on registration — governance enforcement"""
+    reg = PromptRegistration(
+        prompt_id="bsa.future_map",
+        prompt_version="1.0.0",
+        calling_system=CallingSystem.BSA,
+        task_type=TaskType.TRAIT_MAPPING,
+        canon_gate_required=True,
+        registered_by="DTC",
+        status=PromptStatus.ACTIVE,
+        content="test"
+    )
+    result = registry.register(reg)
+    assert result.status == PromptStatus.DEPRECATED
 
 def test_canon_gated_forces_deprecated(registry):
     reg = PromptRegistration(prompt_id="bsa.hcts_map",prompt_version="1.1.0",calling_system=CallingSystem.BSA,task_type=TaskType.TRAIT_MAPPING,content="New",canon_gate_required=False,registered_by="DTC",status=PromptStatus.ACTIVE)

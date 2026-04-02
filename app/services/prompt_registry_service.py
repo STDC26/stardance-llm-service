@@ -20,6 +20,29 @@ class PromptRegistryService:
         self._store = defaultdict(list)
         for seed in BSA_PROMPT_SEEDS:
             self._store[seed["prompt_id"]].append(PromptRecord(**seed))
+        # Auto-promote canon-approved prompts on startup
+        self._auto_promote_approved()
+
+    def _auto_promote_approved(self):
+        """
+        Auto-promote prompts that have received DRJ canon approval.
+        Called on registry startup after seeding.
+        Canon approvals are recorded here as the authoritative approval log.
+        """
+        CANON_APPROVED = {
+            "bsa.hcts_map": {
+                "version": "1.0.0",
+                "approved_by": "DRJ",
+                "approved_date": "2026-03-29",
+                "approval_ref": "BSA Canon Review Pack v1.1 — Gate 4 session"
+            },
+        }
+        for prompt_id, approval in CANON_APPROVED.items():
+            versions = self._store.get(prompt_id, [])
+            for v in versions:
+                if v.prompt_version == approval["version"]:
+                    v.status = PromptStatus.ACTIVE
+                    break
 
     def get_latest(self, prompt_id):
         versions = self._store.get(prompt_id)
@@ -43,7 +66,7 @@ class PromptRegistryService:
     def register(self, registration):
         for v in self._store.get(registration.prompt_id, []):
             if v.prompt_version == registration.prompt_version: raise HTTPException(status_code=409, detail=f"Version {registration.prompt_version} already exists for {registration.prompt_id}.")
-        if registration.prompt_id in CANON_GATED_PROMPTS:
+        if registration.prompt_id in CANON_GATED_PROMPTS or registration.canon_gate_required:
             registration = registration.model_copy(update={"status": PromptStatus.DEPRECATED, "canon_gate_required": True})
         record = PromptRecord(**registration.model_dump())
         self._store[registration.prompt_id].append(record)
