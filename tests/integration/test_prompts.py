@@ -38,3 +38,37 @@ async def test_duplicate_version_returns_409():
     async with AsyncClient(transport=ASGITransport(app=app),base_url="http://test") as c:
         r = await c.post("/v1/llm/prompts",json=payload)
     assert r.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# T3-S4 — Integration: clean restart produces active bsa.hcts_map v1.1.2
+# ---------------------------------------------------------------------------
+
+def test_t3s4_hcts_map_endpoint_returns_v1_1_2(client):
+    """Clean restart: /v1/llm/prompts/bsa.hcts_map returns version 1.1.2"""
+    r = client.get("/v1/llm/prompts/bsa.hcts_map")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["prompt_version"] == "1.1.2", (
+        f"Expected v1.1.2 from endpoint — got {body.get('prompt_version')!r}"
+    )
+
+def test_t3s4_hcts_map_endpoint_content_is_canonical(client):
+    """Clean restart: endpoint content is canonical text, not placeholder"""
+    r = client.get("/v1/llm/prompts/bsa.hcts_map")
+    assert r.status_code == 200
+    body = r.json()
+    content = body.get("content", "")
+    assert "PENDING_DRJ_CANON_APPROVAL" not in content
+    assert "HCTS_v1" in content
+    assert "Ethics target_score must be at least 50" in content
+
+def test_t3s4_hcts_map_endpoint_no_manual_promote_required(client):
+    """
+    bsa.hcts_map must be active on a clean app startup with no manual steps.
+    The auto-promote hook fires on PromptRegistryService.__init__() — the
+    endpoint must return 200/active without any prior promote call.
+    """
+    r = client.get("/v1/llm/prompts/bsa.hcts_map")
+    assert r.status_code == 200
+    assert r.json()["status"] == "active"
