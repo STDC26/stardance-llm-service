@@ -1,5 +1,6 @@
 import pytest
-from app.services.prompt_registry_service import PromptRegistryService, CANON_GATED_PROMPTS
+import logging
+from app.services.prompt_registry_service import PromptRegistryService, CANON_GATED_PROMPTS, BSA_PROMPT_SEEDS
 from app.models.schemas import PromptRegistration, PromptStatus, CallingSystem, TaskType
 from fastapi import HTTPException
 
@@ -120,3 +121,40 @@ def test_t3s4_active_prompts_all_have_non_empty_content(registry):
         assert "PENDING_DRJ_CANON_APPROVAL" not in r.content, (
             f"{pid}: active prompt must have canonical content, not placeholder"
         )
+
+
+# ---------------------------------------------------------------------------
+# T3-S4 Governance Fix — DRJ Directive v1.0
+# Three governance tests: source annotation, audit log, registry protection
+# ---------------------------------------------------------------------------
+
+def test_gov_bsa_hcts_map_source_is_canon_seed():
+    """Governance 1: bsa.hcts_map seed entry carries source=CANON_SEED annotation."""
+    seed = next((s for s in BSA_PROMPT_SEEDS if s["prompt_id"] == "bsa.hcts_map"), None)
+    assert seed is not None, "bsa.hcts_map must be present in BSA_PROMPT_SEEDS"
+    assert seed.get("source") == "CANON_SEED", (
+        f"bsa.hcts_map seed must have source='CANON_SEED', got {seed.get('source')!r}"
+    )
+
+
+def test_gov_audit_log_emitted_on_startup(caplog):
+    """Governance 2: audit log line emitted for CANON_SEED entry on registry init."""
+    with caplog.at_level(logging.INFO, logger="app.services.prompt_registry_service"):
+        PromptRegistryService()
+    canon_logs = [r for r in caplog.records if "CANON_SEED" in r.message and "bsa.hcts_map" in r.message]
+    assert canon_logs, (
+        "Registry init must emit an INFO log containing 'CANON_SEED' and 'bsa.hcts_map'"
+    )
+    assert "BSA_REGISTRY" in canon_logs[0].message
+
+
+def test_gov_get_latest_canon_seed_protection(registry):
+    """Governance 3: get_latest() raises explicit CANON_SEED error when canonical prompt has no active version."""
+    # Force the seeded version to deprecated to simulate a misconfigured registry
+    for v in registry._store["bsa.hcts_map"]:
+        v.status = PromptStatus.DEPRECATED
+    with pytest.raises(HTTPException) as exc_info:
+        registry.get_latest("bsa.hcts_map")
+    assert exc_info.value.status_code == 404
+    assert "CANON_SEED" in exc_info.value.detail
+    assert "DRJ canon approval" in exc_info.value.detail

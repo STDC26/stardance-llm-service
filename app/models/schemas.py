@@ -73,6 +73,7 @@ class PromptRegistration(BaseModel):
     canon_gate_required: bool = False
     registered_by: str
     status: PromptStatus = PromptStatus.ACTIVE
+    source: Optional[str] = None  # "CANON_SEED" for DRJ-seeded canonical prompts
     @field_validator("prompt_id")
     @classmethod
     def validate_prompt_id(cls, v):
