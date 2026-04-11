@@ -77,7 +77,7 @@ class PromptRegistryService:
         return record
 
     def resolve_for_call(self, prompt_id, version=None):
-        return self.get_version(prompt_id, version) if version else self.get_latest(prompt_id)
+        return self.get_version(prompt_id, version) if (version and version != "latest") else self.get_latest(prompt_id)
 
     def list_all_ids(self):
         return list(self._store.keys())
