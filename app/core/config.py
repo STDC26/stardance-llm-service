@@ -5,7 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", populate_by_name=True)
     service_name: str = "sd-llm-service"
-    service_version: str = "1.0.0"
+    service_version: str = "1.0.1"
     environment: str = "development"
     anthropic_api_key: str = Field(validation_alias=AliasChoices("ANTHROPIC_API_KEY", "SD_LLM_ANTHROPIC_API_KEY"))
     anthropic_default_timeout: int = 60
