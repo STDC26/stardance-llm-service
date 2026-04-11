@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, AliasChoices
 from functools import lru_cache
 
 class Settings(BaseSettings):
@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     service_name: str = "sd-llm-service"
     service_version: str = "1.0.0"
     environment: str = "development"
-    anthropic_api_key: str = Field(alias="SD_LLM_ANTHROPIC_API_KEY")
+    anthropic_api_key: str = Field(validation_alias=AliasChoices("ANTHROPIC_API_KEY", "SD_LLM_ANTHROPIC_API_KEY"))
     anthropic_default_timeout: int = 60
     redis_url: str = "redis://localhost:6379/0"
     max_requests_per_minute: int = 60
